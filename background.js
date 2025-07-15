@@ -1,7 +1,7 @@
-// Background script for WSU 2FA Auto-Fill extension
+// Background script for SkipCode extension
 
 chrome.runtime.onInstalled.addListener(() => {
-  console.log("WSU 2FA Auto-Fill extension installed");
+  console.log("SkipCode extension installed");
 
   // Set default settings
   chrome.storage.sync.get(["autoFillEnabled"], (result) => {
@@ -24,7 +24,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     tab.url &&
     tab.url.includes("login.wsu.edu")
   ) {
-    console.log("WSU 2FA Auto-Fill: WSU login page detected");
+    console.log("SkipCode: login page detected");
     // Content script should already be injected via manifest
   }
 });
@@ -32,7 +32,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
 // Handle messages from content scripts
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "log") {
-    console.log("WSU 2FA Auto-Fill:", request.message);
+    console.log("SkipCode:", request.message);
   }
 
   // Keep the message channel open for async responses

@@ -1,6 +1,5 @@
-# WSU 2FA Auto-Fill Extension
-
-A Chrome extension that automatically fills and submits TOTP (Time-based One-Time Password) codes for Washington State University's login system.
+# SkipCode
+*Because your time is worth more than typing six digits*
 
 ## Features
 
