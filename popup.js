@@ -2,24 +2,107 @@ document.addEventListener("DOMContentLoaded", async function () {
   const secretKeyInput = document.getElementById("secretKey");
   const saveKeyBtn = document.getElementById("saveKey");
   const currentCodeDiv = document.getElementById("currentCode");
+  const codeText = document.getElementById("codeText");
   const copyCodeBtn = document.getElementById("copyCode");
   const fillCodeBtn = document.getElementById("fillCode");
   const toggleAutoBtn = document.getElementById("toggleAuto");
+  const clearKeyBtn = document.getElementById("clearKey");
   const codeSection = document.getElementById("codeSection");
+  const keyInputSection = document.getElementById("keyInputSection");
   const statusDiv = document.getElementById("status");
+  const confirmDialog = document.getElementById("confirmDialog");
+  const confirmYesBtn = document.getElementById("confirmYes");
+  const confirmNoBtn = document.getElementById("confirmNo");
 
   let currentCode = "";
   let updateInterval;
+  let decryptedSecret = "";
+
+  // Simple encryption/decryption functions
+  async function encryptSecret(secret) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(secret);
+    const key = await crypto.subtle.generateKey(
+      { name: "AES-GCM", length: 256 },
+      true,
+      ["encrypt", "decrypt"],
+    );
+
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const encrypted = await crypto.subtle.encrypt(
+      { name: "AES-GCM", iv },
+      key,
+      data,
+    );
+
+    const keyData = await crypto.subtle.exportKey("raw", key);
+    return {
+      key: Array.from(new Uint8Array(keyData)),
+      iv: Array.from(iv),
+      data: Array.from(new Uint8Array(encrypted)),
+    };
+  }
+
+  async function decryptSecret(encryptedData) {
+    const key = await crypto.subtle.importKey(
+      "raw",
+      new Uint8Array(encryptedData.key),
+      { name: "AES-GCM" },
+      false,
+      ["decrypt"],
+    );
+
+    const decrypted = await crypto.subtle.decrypt(
+      { name: "AES-GCM", iv: new Uint8Array(encryptedData.iv) },
+      key,
+      new Uint8Array(encryptedData.data),
+    );
+
+    const decoder = new TextDecoder();
+    return decoder.decode(decrypted);
+  }
+
+  // Validate TOTP secret key format
+  async function validateSecretKey(secret) {
+    // Remove spaces and convert to uppercase
+    const cleanSecret = secret.replace(/\s/g, '').toUpperCase();
+    
+    // Check if it's valid base32 (A-Z, 2-7)
+    const base32Regex = /^[A-Z2-7]+=*$/;
+    if (!base32Regex.test(cleanSecret)) {
+      return { valid: false, error: "Invalid format. Key must be base32 (A-Z, 2-7)" };
+    }
+    
+    // Check minimum length (usually 16+ characters for security)
+    if (cleanSecret.length < 16) {
+      return { valid: false, error: "Key too short. Must be at least 16 characters" };
+    }
+    
+    // Test if we can generate a TOTP code with this key
+    try {
+      // This will throw if the key is invalid
+      const testCode = await TOTP.generate(cleanSecret);
+      return { valid: true, cleanSecret };
+    } catch (error) {
+      return { valid: false, error: "Invalid secret key format" };
+    }
+  }
 
   // Load saved settings
   const result = await chrome.storage.sync.get([
-    "totpSecret",
+    "totpSecretEncrypted",
     "autoFillEnabled",
   ]);
-  if (result.totpSecret) {
-    secretKeyInput.value = result.totpSecret;
-    codeSection.style.display = "block";
-    startCodeGeneration();
+  if (result.totpSecretEncrypted) {
+    try {
+      decryptedSecret = await decryptSecret(result.totpSecretEncrypted);
+      keyInputSection.style.display = "none";
+      codeSection.style.display = "block";
+      startCodeGeneration();
+    } catch (error) {
+      console.error("Error decrypting secret:", error);
+      showStatus("Error loading saved key", "error");
+    }
   }
 
   const autoFillEnabled = result.autoFillEnabled !== false; // Default to true
@@ -27,11 +110,22 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   function showStatus(message, type = "success") {
     statusDiv.textContent = message;
-    statusDiv.className = `status ${type}`;
+    statusDiv.className = `status ${type} show`;
     setTimeout(() => {
-      statusDiv.textContent = "";
-      statusDiv.className = "";
+      statusDiv.className = `status ${type}`;
+      setTimeout(() => {
+        statusDiv.textContent = "";
+        statusDiv.className = "status";
+      }, 300);
     }, 3000);
+  }
+
+  function showConfirmDialog() {
+    confirmDialog.style.display = "flex";
+  }
+
+  function hideConfirmDialog() {
+    confirmDialog.style.display = "none";
   }
 
   function updateAutoFillButton(enabled) {
@@ -41,11 +135,11 @@ document.addEventListener("DOMContentLoaded", async function () {
 
   async function generateAndDisplayCode() {
     try {
-      const secret = secretKeyInput.value.trim();
+      const secret = decryptedSecret || secretKeyInput.value.trim();
       if (!secret) return;
 
       currentCode = await TOTP.generate(secret);
-      currentCodeDiv.textContent = currentCode;
+      codeText.textContent = currentCode;
 
       const timeRemaining = TOTP.getTimeRemaining();
       if (timeRemaining <= 5) {
@@ -55,7 +149,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       }
     } catch (error) {
       console.error("Error generating TOTP:", error);
-      currentCodeDiv.textContent = "Error";
+      codeText.textContent = "Error";
       showStatus("Error generating code", "error");
     }
   }
@@ -79,9 +173,20 @@ document.addEventListener("DOMContentLoaded", async function () {
       return;
     }
 
+    // Validate the secret key
+    const validation = await validateSecretKey(secret);
+    if (!validation.valid) {
+      showStatus(validation.error, "error");
+      return;
+    }
+
     try {
-      await chrome.storage.sync.set({ totpSecret: secret });
-      showStatus("Secret key saved!");
+      const encryptedSecret = await encryptSecret(validation.cleanSecret);
+      await chrome.storage.sync.set({ totpSecretEncrypted: encryptedSecret });
+      decryptedSecret = validation.cleanSecret;
+      secretKeyInput.value = "";
+      keyInputSection.style.display = "none";
+      showStatus("Secret key saved securely!");
       codeSection.style.display = "block";
       startCodeGeneration();
     } catch (error) {
@@ -135,6 +240,52 @@ document.addEventListener("DOMContentLoaded", async function () {
     await chrome.storage.sync.set({ autoFillEnabled: newValue });
     updateAutoFillButton(newValue);
     showStatus(`Auto-fill ${newValue ? "enabled" : "disabled"}!`);
+  });
+
+  // Clear key functionality
+  clearKeyBtn.addEventListener("click", function () {
+    showConfirmDialog();
+  });
+
+  confirmYesBtn.addEventListener("click", async function () {
+    hideConfirmDialog();
+    try {
+      await chrome.storage.sync.remove(["totpSecretEncrypted"]);
+      decryptedSecret = "";
+      stopCodeGeneration();
+      codeSection.style.display = "none";
+      keyInputSection.style.display = "block";
+      secretKeyInput.value = "";
+      secretKeyInput.focus();
+      showStatus("Secret key cleared", "warning");
+    } catch (error) {
+      showStatus("Error clearing secret key", "error");
+    }
+  });
+
+  confirmNoBtn.addEventListener("click", function () {
+    hideConfirmDialog();
+  });
+
+  // Close dialog when clicking outside
+  confirmDialog.addEventListener("click", function (e) {
+    if (e.target === confirmDialog) {
+      hideConfirmDialog();
+    }
+  });
+
+  // Make code clickable to copy
+  currentCodeDiv.addEventListener("click", function () {
+    if (currentCode) {
+      navigator.clipboard
+        .writeText(currentCode)
+        .then(() => {
+          showStatus("Code copied to clipboard!");
+        })
+        .catch(() => {
+          showStatus("Failed to copy code", "error");
+        });
+    }
   });
 
   // Clean up on popup close
