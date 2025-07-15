@@ -7,6 +7,60 @@
         width: 300px;
         padding: 20px;
         font-family: Arial, sans-serif;
+        position: relative;
+      }
+      .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+        position: relative;
+      }
+      .header h3 {
+        margin: 0;
+      }
+      .logo {
+        height: 32px;
+        max-width: 200px;
+        object-fit: contain;
+      }
+      .settings-gear {
+        font-size: 18px;
+        cursor: pointer;
+        padding: 5px;
+        border-radius: 4px;
+        transition: background-color 0.2s;
+        user-select: none;
+      }
+      .settings-gear:hover {
+        background-color: #f0f0f0;
+      }
+      .settings-menu {
+        position: absolute;
+        top: 35px;
+        right: 0;
+        background: white;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        z-index: 1000;
+        min-width: 140px;
+      }
+      .menu-item {
+        padding: 10px 12px;
+        cursor: pointer;
+        border-bottom: 1px solid #eee;
+        transition: background-color 0.2s;
+      }
+      .menu-item:last-child {
+        border-bottom: none;
+      }
+      .menu-item:hover {
+        background-color: #f8f9fa;
+      }
+      .menu-danger:hover {
+        background-color: #f8d7da;
+        color: #721c24;
       }
       .input-group {
         margin-bottom: 15px;
@@ -79,27 +133,6 @@
       .status.warning {
         background-color: #fff3cd;
         color: #856404;
-      }
-      .toggle-auto {
-        background-color: #28a745;
-      }
-      .toggle-auto.disabled {
-        background-color: #dc3545;
-      }
-      .clear-section {
-        text-align: right;
-        margin-top: 15px;
-      }
-      .clear-icon {
-        font-size: 18px;
-        cursor: pointer;
-        padding: 5px;
-        border-radius: 4px;
-        transition: background-color 0.2s;
-        display: inline-block;
-      }
-      .clear-icon:hover {
-        background-color: #f8d7da;
       }
       .confirm-dialog {
         position: fixed;
@@ -178,9 +211,22 @@
     </style>
   </head>
   <body>
-    <h3>WSU 2FA Auto-Fill</h3>
+    <div class="header">
+      <img src="LogoFull.png" alt="WSU 2FA Auto-Fill" class="logo">
+      <div class="settings-gear" id="settingsGear" title="Settings">⚙️</div>
+    </div>
 
     <div id="status"></div>
+
+    <!-- Settings dropdown menu -->
+    <div id="settingsMenu" class="settings-menu" style="display: none;">
+      <div class="menu-item" id="menuToggleAuto">
+        <span id="autoFillStatus">Auto-Fill: ON</span>
+      </div>
+      <div class="menu-item menu-danger" id="menuClearKey">
+        <span>🗑️ Clear Secret Key</span>
+      </div>
+    </div>
 
     <div class="input-group" id="keyInputSection">
       <label for="secretKey">Secret Key:</label>
@@ -203,11 +249,6 @@
 
       <button id="copyCode">Copy Code</button>
       <button id="fillCode">Fill Code on Page</button>
-      <button id="toggleAuto" class="toggle-auto">Auto-Fill: ON</button>
-      
-      <div class="clear-section">
-        <span class="clear-icon" id="clearKey" title="Clear secret key">🗑️</span>
-      </div>
     </div>
 
     <!-- Custom confirmation dialog -->

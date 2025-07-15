@@ -5,14 +5,19 @@ document.addEventListener("DOMContentLoaded", async function () {
   const codeText = document.getElementById("codeText");
   const copyCodeBtn = document.getElementById("copyCode");
   const fillCodeBtn = document.getElementById("fillCode");
-  const toggleAutoBtn = document.getElementById("toggleAuto");
-  const clearKeyBtn = document.getElementById("clearKey");
   const codeSection = document.getElementById("codeSection");
   const keyInputSection = document.getElementById("keyInputSection");
   const statusDiv = document.getElementById("status");
   const confirmDialog = document.getElementById("confirmDialog");
   const confirmYesBtn = document.getElementById("confirmYes");
   const confirmNoBtn = document.getElementById("confirmNo");
+  
+  // Settings menu elements
+  const settingsGear = document.getElementById("settingsGear");
+  const settingsMenu = document.getElementById("settingsMenu");
+  const menuToggleAuto = document.getElementById("menuToggleAuto");
+  const menuClearKey = document.getElementById("menuClearKey");
+  const autoFillStatus = document.getElementById("autoFillStatus");
 
   let currentCode = "";
   let updateInterval;
@@ -106,7 +111,7 @@ document.addEventListener("DOMContentLoaded", async function () {
   }
 
   const autoFillEnabled = result.autoFillEnabled !== false; // Default to true
-  updateAutoFillButton(autoFillEnabled);
+  updateAutoFillStatus(autoFillEnabled);
 
   function showStatus(message, type = "success") {
     statusDiv.textContent = message;
@@ -128,9 +133,15 @@ document.addEventListener("DOMContentLoaded", async function () {
     confirmDialog.style.display = "none";
   }
 
-  function updateAutoFillButton(enabled) {
-    toggleAutoBtn.textContent = `Auto-Fill: ${enabled ? "ON" : "OFF"}`;
-    toggleAutoBtn.className = `toggle-auto ${enabled ? "" : "disabled"}`;
+  function updateAutoFillStatus(enabled) {
+    autoFillStatus.textContent = `Auto-Fill: ${enabled ? "ON" : "OFF"}`;
+    if (enabled) {
+      autoFillStatus.style.color = "#28a745";
+      autoFillStatus.style.fontWeight = "normal";
+    } else {
+      autoFillStatus.style.color = "#dc3545";
+      autoFillStatus.style.fontWeight = "bold";
+    }
   }
 
   async function generateAndDisplayCode() {
@@ -166,7 +177,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
   }
 
-  saveKeyBtn.addEventListener("click", async function () {
+  async function saveSecretKey() {
     const secret = secretKeyInput.value.trim();
     if (!secret) {
       showStatus("Please enter a secret key", "error");
@@ -191,6 +202,16 @@ document.addEventListener("DOMContentLoaded", async function () {
       startCodeGeneration();
     } catch (error) {
       showStatus("Error saving secret key", "error");
+    }
+  }
+
+  saveKeyBtn.addEventListener("click", saveSecretKey);
+
+  // Add Enter key support for secret key input
+  secretKeyInput.addEventListener("keypress", function(event) {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      saveSecretKey();
     }
   });
 
@@ -233,13 +254,29 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
   });
 
-  toggleAutoBtn.addEventListener("click", async function () {
+  // Settings menu functionality
+  settingsGear.addEventListener("click", function(event) {
+    event.stopPropagation();
+    const isVisible = settingsMenu.style.display !== "none";
+    settingsMenu.style.display = isVisible ? "none" : "block";
+  });
+
+  // Close menu when clicking outside
+  document.addEventListener("click", function(event) {
+    if (!settingsMenu.contains(event.target) && event.target !== settingsGear) {
+      settingsMenu.style.display = "none";
+    }
+  });
+
+  // Auto-fill toggle in menu
+  menuToggleAuto.addEventListener("click", async function () {
     const result = await chrome.storage.sync.get(["autoFillEnabled"]);
     const newValue = !(result.autoFillEnabled !== false);
 
     await chrome.storage.sync.set({ autoFillEnabled: newValue });
-    updateAutoFillButton(newValue);
+    updateAutoFillStatus(newValue);
     showStatus(`Auto-fill ${newValue ? "enabled" : "disabled"}!`);
+    settingsMenu.style.display = "none"; // Close menu after action
     
     if (newValue && decryptedSecret) {
       // If enabling autofill and we have a secret, start monitoring current tab
@@ -271,8 +308,9 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
   });
 
-  // Clear key functionality
-  clearKeyBtn.addEventListener("click", function () {
+  // Clear key functionality from menu
+  menuClearKey.addEventListener("click", function () {
+    settingsMenu.style.display = "none"; // Close menu first
     showConfirmDialog();
   });
 
