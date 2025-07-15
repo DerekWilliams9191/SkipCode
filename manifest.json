@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "WSU OKTA Auto-Fill",
+  "name": "SkipCode",
   "version": "1.0",
-  "description": "Automatically fills and submits 2FA codes for WSU login",
+  "description": "Because your time is worth more than typing six digits - Auto-fills 2FA codes",
   "permissions": ["storage", "activeTab"],
   "host_permissions": ["*://login.wsu.edu/*"],
   "content_scripts": [
@@ -14,7 +14,7 @@
   ],
   "action": {
     "default_popup": "popup.html",
-    "default_title": "WSU OKTA Auto-Fill",
+    "default_title": "SkipCode",
     "default_icon": {
       "16": "favicon.png",
       "32": "favicon.png",

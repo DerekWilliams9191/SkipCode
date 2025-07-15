@@ -17,7 +17,10 @@ document.addEventListener("DOMContentLoaded", async function () {
   const settingsMenu = document.getElementById("settingsMenu");
   const menuToggleAuto = document.getElementById("menuToggleAuto");
   const menuClearKey = document.getElementById("menuClearKey");
+  const menuHowTo = document.getElementById("menuHowTo");
+  const menuLicense = document.getElementById("menuLicense");
   const autoFillStatus = document.getElementById("autoFillStatus");
+  const helpLink = document.getElementById("helpLink");
 
   let currentCode = "";
   let updateInterval;
@@ -104,10 +107,14 @@ document.addEventListener("DOMContentLoaded", async function () {
       keyInputSection.style.display = "none";
       codeSection.style.display = "block";
       startCodeGeneration();
+      updateSettingsMenu(true); // Has key
     } catch (error) {
       console.error("Error decrypting secret:", error);
       showStatus("Error loading saved key", "error");
+      updateSettingsMenu(false); // No key
     }
+  } else {
+    updateSettingsMenu(false); // No key
   }
 
   const autoFillEnabled = result.autoFillEnabled !== false; // Default to true
@@ -136,11 +143,20 @@ document.addEventListener("DOMContentLoaded", async function () {
   function updateAutoFillStatus(enabled) {
     autoFillStatus.textContent = `Auto-Fill: ${enabled ? "ON" : "OFF"}`;
     if (enabled) {
-      autoFillStatus.style.color = "#28a745";
+      autoFillStatus.style.color = "#00C851";
       autoFillStatus.style.fontWeight = "normal";
     } else {
-      autoFillStatus.style.color = "#dc3545";
+      autoFillStatus.style.color = "#FF3547";
       autoFillStatus.style.fontWeight = "bold";
+    }
+  }
+
+  function updateSettingsMenu(hasKey) {
+    // Show/hide clear key option based on whether a key is stored
+    if (hasKey) {
+      menuClearKey.style.display = "block";
+    } else {
+      menuClearKey.style.display = "none";
     }
   }
 
@@ -199,6 +215,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       keyInputSection.style.display = "none";
       showStatus("Secret key saved securely!");
       codeSection.style.display = "block";
+      updateSettingsMenu(true); // Now has key
       startCodeGeneration();
     } catch (error) {
       showStatus("Error saving secret key", "error");
@@ -240,7 +257,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         currentWindow: true,
       });
       if (!tab.url.includes("login.wsu.edu")) {
-        showStatus("This only works on login.wsu.edu", "warning");
+        showStatus("This only works on the login page", "warning");
         return;
       }
 
@@ -287,7 +304,7 @@ document.addEventListener("DOMContentLoaded", async function () {
             action: "startMonitoring",
             secret: decryptedSecret
           });
-          console.log("Started monitoring current WSU tab");
+          console.log("SkipCode: Started monitoring current tab");
         }
       } catch (error) {
         console.log("Could not start monitoring current tab:", error);
@@ -300,7 +317,7 @@ document.addEventListener("DOMContentLoaded", async function () {
           await chrome.tabs.sendMessage(tab.id, {
             action: "stopMonitoring"
           });
-          console.log("Stopped monitoring current WSU tab");
+          console.log("SkipCode: Stopped monitoring current tab");
         }
       } catch (error) {
         console.log("Could not stop monitoring current tab:", error);
@@ -314,6 +331,24 @@ document.addEventListener("DOMContentLoaded", async function () {
     showConfirmDialog();
   });
 
+  // How To link
+  menuHowTo.addEventListener("click", function () {
+    settingsMenu.style.display = "none"; // Close menu first
+    chrome.tabs.create({ url: "https://github.com/DerekWilliams9191/SkipCode/blob/main/HOW-TO.md" });
+  });
+
+  // License link
+  menuLicense.addEventListener("click", function () {
+    settingsMenu.style.display = "none"; // Close menu first
+    chrome.tabs.create({ url: "https://github.com/DerekWilliams9191/SkipCode/blob/main/LICENSE" });
+  });
+
+  // Help link on key input page
+  helpLink.addEventListener("click", function (e) {
+    e.preventDefault();
+    chrome.tabs.create({ url: "https://github.com/DerekWilliams9191/SkipCode/blob/main/HOW-TO.md" });
+  });
+
   confirmYesBtn.addEventListener("click", async function () {
     hideConfirmDialog();
     try {
@@ -322,6 +357,7 @@ document.addEventListener("DOMContentLoaded", async function () {
       stopCodeGeneration();
       codeSection.style.display = "none";
       keyInputSection.style.display = "block";
+      updateSettingsMenu(false); // No longer has key
       secretKeyInput.value = "";
       secretKeyInput.focus();
       showStatus("Secret key cleared", "warning");

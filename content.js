@@ -80,7 +80,7 @@ async function decryptSecret(encryptedData) {
   return decoder.decode(decrypted);
 }
 
-class WSU2FAAutoFill {
+class SkipCodeAutoFill {
   constructor() {
     this.retryTimeout = null;
     this.hasAttempted = false;
@@ -90,7 +90,7 @@ class WSU2FAAutoFill {
   }
 
   async init() {
-    console.log("WSU 2FA Auto-Fill: Content script loaded");
+    console.log("SkipCode: Content script loaded");
 
     // Listen for messages from popup
     chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -99,23 +99,23 @@ class WSU2FAAutoFill {
         sendResponse({ success });
       } else if (request.action === "startMonitoring") {
         // Start monitoring when autofill is enabled
-        console.log("WSU 2FA Auto-Fill: Starting monitoring from popup request");
+        console.log("SkipCode: Starting monitoring from popup request");
         this.decryptedSecret = request.secret;
         this.hasAttempted = false;
         
         // Try to find the 2FA field immediately, then start watching
         const input = this.findPasscodeInput();
         if (input) {
-          console.log("WSU 2FA Auto-Fill: 2FA field found, starting immediate attempt");
+          console.log("SkipCode: 2FA field found, starting immediate attempt");
           setTimeout(() => this.attemptAutoFill(), 250);
         } else {
-          console.log("WSU 2FA Auto-Fill: 2FA field not found, starting to watch for it");
+          console.log("SkipCode: 2FA field not found, starting to watch for it");
           this.startWatching();
         }
         sendResponse({ success: true });
       } else if (request.action === "stopMonitoring") {
         // Stop monitoring when autofill is disabled
-        console.log("WSU 2FA Auto-Fill: Stopping monitoring from popup request");
+        console.log("SkipCode: Stopping monitoring from popup request");
         this.stopWatching();
         sendResponse({ success: true });
       }
@@ -131,7 +131,7 @@ class WSU2FAAutoFill {
         this.decryptedSecret = await this.decryptSecret(result.totpSecretEncrypted);
         this.startWatching();
       } catch (error) {
-        console.error("WSU 2FA Auto-Fill: Error decrypting secret:", error);
+        console.error("SkipCode: Error decrypting secret:", error);
       }
     }
   }
@@ -141,7 +141,7 @@ class WSU2FAAutoFill {
   }
 
   startWatching() {
-    console.log("WSU 2FA Auto-Fill: Starting to watch for 2FA field");
+    console.log("SkipCode: Starting to watch for 2FA field");
     
     // Try immediate fill in case 2FA field is already present
     setTimeout(() => this.attemptAutoFill(), 250); // 0.25 second delay for immediate check
@@ -150,12 +150,12 @@ class WSU2FAAutoFill {
     this.observer = new MutationObserver((mutations) => {
       mutations.forEach((mutation) => {
         if (mutation.type === 'childList' && mutation.addedNodes.length > 0 && !this.hasAttempted) {
-          console.log("WSU 2FA Auto-Fill: DOM mutation detected", mutation.addedNodes.length, "nodes added");
+          console.log("SkipCode: DOM mutation detected", mutation.addedNodes.length, "nodes added");
           
           // Check if the 2FA input field is now available
           const input = this.findPasscodeInput();
           if (input) {
-            console.log("WSU 2FA Auto-Fill: Detected 2FA field, waiting before attempting fill");
+            console.log("SkipCode: Detected 2FA field, waiting before attempting fill");
             setTimeout(() => this.attemptAutoFill(), 250); // 0.25 second delay after finding field
           }
         }
@@ -175,7 +175,7 @@ class WSU2FAAutoFill {
       if (!this.hasAttempted) {
         const input = this.findPasscodeInput();
         if (input) {
-          console.log("WSU 2FA Auto-Fill: Periodic check found 2FA field");
+          console.log("SkipCode: Periodic check found 2FA field");
           this.attemptAutoFill();
         }
       } else {
@@ -183,11 +183,11 @@ class WSU2FAAutoFill {
       }
     }, 250);
     
-    console.log("WSU 2FA Auto-Fill: Started watching for 2FA field with enhanced detection");
+    console.log("SkipCode: Started watching for 2FA field with enhanced detection");
   }
 
   stopWatching() {
-    console.log("WSU 2FA Auto-Fill: Stopping monitoring");
+    console.log("SkipCode: Stopping monitoring");
     
     // Stop mutation observer
     if (this.observer) {
@@ -214,35 +214,35 @@ class WSU2FAAutoFill {
 
   async attemptAutoFill() {
     if (this.hasAttempted || !this.decryptedSecret) {
-      console.log("WSU 2FA Auto-Fill: Skipping auto-fill attempt", {
+      console.log("SkipCode: Skipping auto-fill attempt", {
         hasAttempted: this.hasAttempted,
         hasSecret: !!this.decryptedSecret
       });
       return;
     }
 
-    console.log("WSU 2FA Auto-Fill: Attempting auto-fill");
+    console.log("SkipCode: Attempting auto-fill");
     
     // First check if the field is available
     const input = this.findPasscodeInput();
     if (!input) {
-      console.log("WSU 2FA Auto-Fill: No input field found, will retry");
+      console.log("SkipCode: No input field found, will retry");
       this.scheduleRetry();
       return;
     }
 
-    console.log("WSU 2FA Auto-Fill: Found input field, waiting before filling");
+    console.log("SkipCode: Found input field, waiting before filling");
     
     // Wait 0.25 seconds after finding the box before entering the code
     setTimeout(async () => {
       try {
         const code = await TOTP.generate(this.decryptedSecret);
-        console.log("WSU 2FA Auto-Fill: Generated TOTP code:", code);
+        console.log("SkipCode: Generated TOTP code:", code);
         
         const success = this.fillAndSubmitCode(code);
 
         if (success) {
-          console.log("WSU 2FA Auto-Fill: Auto-fill successful!");
+          console.log("SkipCode: Auto-fill successful!");
           this.hasAttempted = true;
           
           // Stop observing once we successfully fill
@@ -254,13 +254,13 @@ class WSU2FAAutoFill {
             clearInterval(this.periodicCheck);
           }
         } else {
-          console.log("WSU 2FA Auto-Fill: Auto-fill failed, will retry");
+          console.log("SkipCode: Auto-fill failed, will retry");
           // Reset hasAttempted so it can try again
           this.hasAttempted = false;
           this.scheduleRetry();
         }
       } catch (error) {
-        console.error("WSU 2FA Auto-Fill: Error generating code:", error);
+        console.error("SkipCode: Error generating code:", error);
         this.scheduleRetry();
       }
     }, 250);
@@ -270,19 +270,19 @@ class WSU2FAAutoFill {
     if (this.retryTimeout) return; // Already scheduled
 
     this.retryTimeout = setTimeout(async () => {
-      console.log("WSU 2FA Auto-Fill: Retrying auto-fill");
+      console.log("SkipCode: Retrying auto-fill");
       try {
         const code = await TOTP.generate(this.decryptedSecret);
         this.fillAndSubmitCode(code, true); // Auto-submit on retry
       } catch (error) {
-        console.error("WSU 2FA Auto-Fill: Error on retry:", error);
+        console.error("SkipCode: Error on retry:", error);
       }
       this.retryTimeout = null;
     }, 250); // 0.25 second retry delay
   }
 
   findPasscodeInput() {
-    console.log("WSU 2FA Auto-Fill: Searching for passcode input field");
+    console.log("SkipCode: Searching for passcode input field");
     
     // Find the "Enter code" label and get its associated input
     const labels = document.querySelectorAll('label');
@@ -293,14 +293,14 @@ class WSU2FAAutoFill {
         if (forAttribute) {
           const input = document.getElementById(forAttribute);
           if (input && input.offsetParent !== null) {
-            console.log("WSU 2FA Auto-Fill: Found 2FA input via Enter code label", input);
+            console.log("SkipCode: Found 2FA input via Enter code label", input);
             return input;
           }
         }
       }
     }
     
-    console.log("WSU 2FA Auto-Fill: Could not find input associated with 'Enter code' label");
+    console.log("SkipCode: Could not find input associated with 'Enter code' label");
     return null;
   }
 
@@ -318,7 +318,7 @@ class WSU2FAAutoFill {
       const element = document.querySelector(selector);
       if (element) {
         console.log(
-          `WSU 2FA Auto-Fill: Found submit button using selector: ${selector}`,
+          `SkipCode: Found submit button using selector: ${selector}`,
         );
         return element;
       }
@@ -333,7 +333,7 @@ class WSU2FAAutoFill {
         text.includes("submit") ||
         text.includes("continue")
       ) {
-        console.log("WSU 2FA Auto-Fill: Found submit button by text content");
+        console.log("SkipCode: Found submit button by text content");
         return button;
       }
     }
@@ -372,7 +372,7 @@ class WSU2FAAutoFill {
     const passcodeInput = this.findPasscodeInput();
 
     if (!passcodeInput) {
-      console.log("WSU 2FA Auto-Fill: Could not find passcode input field");
+      console.log("SkipCode: Could not find passcode input field");
       return false;
     }
 
@@ -394,7 +394,7 @@ class WSU2FAAutoFill {
         passcodeInput.dispatchEvent(event);
       });
 
-      console.log(`WSU 2FA Auto-Fill: Filled code: ${code}`);
+      console.log(`SkipCode: Filled code: ${code}`);
 
       if (autoSubmit) {
         // Additional delay before submitting to ensure the form processes the input
@@ -402,15 +402,15 @@ class WSU2FAAutoFill {
           const submitButton = this.findSubmitButton();
 
           if (submitButton && !submitButton.disabled) {
-            console.log("WSU 2FA Auto-Fill: Clicking submit button");
+            console.log("SkipCode: Clicking submit button");
             submitButton.click();
           } else {
-            console.log("WSU 2FA Auto-Fill: Submit button not found or disabled");
+            console.log("SkipCode: Submit button not found or disabled");
 
             // Try to submit the form directly
             const form = passcodeInput.closest("form");
             if (form) {
-              console.log("WSU 2FA Auto-Fill: Submitting form directly");
+              console.log("SkipCode: Submitting form directly");
               form.submit();
             }
           }
@@ -425,8 +425,8 @@ class WSU2FAAutoFill {
 // Initialize when DOM is ready
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", () => {
-    new WSU2FAAutoFill();
+    new SkipCodeAutoFill();
   });
 } else {
-  new WSU2FAAutoFill();
+  new SkipCodeAutoFill();
 }
