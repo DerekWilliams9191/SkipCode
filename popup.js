@@ -240,6 +240,22 @@ document.addEventListener("DOMContentLoaded", async function () {
     await chrome.storage.sync.set({ autoFillEnabled: newValue });
     updateAutoFillButton(newValue);
     showStatus(`Auto-fill ${newValue ? "enabled" : "disabled"}!`);
+    
+    // If enabling autofill and we have a secret, start monitoring current tab
+    if (newValue && decryptedSecret) {
+      try {
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (tab.url.includes("login.wsu.edu")) {
+          await chrome.tabs.sendMessage(tab.id, {
+            action: "startMonitoring",
+            secret: decryptedSecret
+          });
+          console.log("Started monitoring current WSU tab");
+        }
+      } catch (error) {
+        console.log("Could not start monitoring current tab:", error);
+      }
+    }
   });
 
   // Clear key functionality
