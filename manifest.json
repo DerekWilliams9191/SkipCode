@@ -1,0 +1,22 @@
+{
+  "manifest_version": 3,
+  "name": "WSU 2FA Auto-Fill",
+  "version": "1.0",
+  "description": "Automatically fills and submits 2FA codes for WSU login",
+  "permissions": ["storage", "activeTab"],
+  "host_permissions": ["*://login.wsu.edu/*"],
+  "content_scripts": [
+    {
+      "matches": ["*://login.wsu.edu/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "WSU 2FA Auto-Fill"
+  },
+  "background": {
+    "service_worker": "background.js"
+  }
+}
