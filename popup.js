@@ -241,8 +241,8 @@ document.addEventListener("DOMContentLoaded", async function () {
     updateAutoFillButton(newValue);
     showStatus(`Auto-fill ${newValue ? "enabled" : "disabled"}!`);
     
-    // If enabling autofill and we have a secret, start monitoring current tab
     if (newValue && decryptedSecret) {
+      // If enabling autofill and we have a secret, start monitoring current tab
       try {
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
         if (tab.url.includes("login.wsu.edu")) {
@@ -254,6 +254,19 @@ document.addEventListener("DOMContentLoaded", async function () {
         }
       } catch (error) {
         console.log("Could not start monitoring current tab:", error);
+      }
+    } else if (!newValue) {
+      // If disabling autofill, stop monitoring current tab
+      try {
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (tab.url.includes("login.wsu.edu")) {
+          await chrome.tabs.sendMessage(tab.id, {
+            action: "stopMonitoring"
+          });
+          console.log("Stopped monitoring current WSU tab");
+        }
+      } catch (error) {
+        console.log("Could not stop monitoring current tab:", error);
       }
     }
   });

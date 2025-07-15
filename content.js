@@ -113,6 +113,11 @@ class WSU2FAAutoFill {
           this.startWatching();
         }
         sendResponse({ success: true });
+      } else if (request.action === "stopMonitoring") {
+        // Stop monitoring when autofill is disabled
+        console.log("WSU 2FA Auto-Fill: Stopping monitoring from popup request");
+        this.stopWatching();
+        sendResponse({ success: true });
       }
     });
 
@@ -179,6 +184,32 @@ class WSU2FAAutoFill {
     }, 250);
     
     console.log("WSU 2FA Auto-Fill: Started watching for 2FA field with enhanced detection");
+  }
+
+  stopWatching() {
+    console.log("WSU 2FA Auto-Fill: Stopping monitoring");
+    
+    // Stop mutation observer
+    if (this.observer) {
+      this.observer.disconnect();
+      this.observer = null;
+    }
+    
+    // Stop periodic check
+    if (this.periodicCheck) {
+      clearInterval(this.periodicCheck);
+      this.periodicCheck = null;
+    }
+    
+    // Stop retry timeout
+    if (this.retryTimeout) {
+      clearTimeout(this.retryTimeout);
+      this.retryTimeout = null;
+    }
+    
+    // Reset state
+    this.hasAttempted = false;
+    this.decryptedSecret = null;
   }
 
   async attemptAutoFill() {
