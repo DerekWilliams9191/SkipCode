@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "WSU 2FA Auto-Fill",
+  "name": "WSU OKTA Auto-Fill",
   "version": "1.0",
   "description": "Automatically fills and submits 2FA codes for WSU login",
   "permissions": ["storage", "activeTab"],
@@ -14,7 +14,7 @@
   ],
   "action": {
     "default_popup": "popup.html",
-    "default_title": "WSU 2FA Auto-Fill"
+    "default_title": "WSU OKTA Auto-Fill"
   },
   "background": {
     "service_worker": "background.js"
